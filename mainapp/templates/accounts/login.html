@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block title %}Авторизация{% endblock title %}
+{% block content %}
+<div class="container text-center">
+    <div class="row">
+        <div class="col-md-8 offset md-3">
+            <div class="row" style="text-align: center; padding: auto; letter-spacing: 3px;">
+                    <h3>Авторизация</h3>
+                    <hr>
+                    <form  method="POST">
+                        <p><a href="{% url 'password_reset' %}">Forgotten your password?</a></p>
+                        {% csrf_token %}s
+                        {{ form|crispy }}
+                        <input type="submit" class="btn btn-success btn-block" value="Войти">
+                    </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block title %}Проверка{% endblock %}
+{% block content %}
+<h1>Проверка</h1>
+    <div class="order-info">
+        <h3>Ваш заказ</h3>
+        <ul>
+        {% for item in cart %}
+        <li>
+        {{ item.quantity }}x {{ item.product.name }}
+        <span>{{ item.total_price }} р.</span>
+        </li>
+        {% endfor %}
+        </ul>
+        <p>Итого: {{ cart.get_total_price }}р.</p>
+    </div>
+    <form method="post" class="order-form">
+    {{ form|crispy }}
+    <p><input type="submit" value="Оформить"></p>
+    {% csrf_token %}
+    </form>
+{% endblock %}

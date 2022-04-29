@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% load thumbnail %}
+{% block title %}{{ product.title }}{% endblock title %}
+{% block content %}
+<div class="container ">
+    <div class="row">
+        <div class="col-lg-3">
+
+
+                    {% thumbnail product.image "225x175" as im %}
+                            <a href="{{ product.image.url }}">
+                                <img src="{{ im.url }}" class="image-detail">
+                            </a>
+                    {% endthumbnail %}
+                        <h5>Цена: {{ product.price }} р.</h5>
+                        <h6> {{ product.description }}</h6>
+                        <h6> {{ product.weight }}</h6>
+                        <h6> {{ product.manufacturer }}</h6>
+                        <h6> В наличии {{ product.quantity }}</h6>
+
+                        <form action="{% url 'add-to-cart' product.pk %}" method="post">
+                        {{ form|crispy }}
+                        {% csrf_token %}
+                        <input type="submit" value="Добавить в корзину">
+                        </form>
+        </div>
+
+    </div>
+</div>
+{% endblock content %}

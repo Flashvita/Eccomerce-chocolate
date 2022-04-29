@@ -1,0 +1,6 @@
+{% autoescape off %}
+
+Hi  {{ user.get_username }}
+Please go to link for verify for onlineshop
+{{ protocol }}://{{ domain }}{% url 'verify-email' uidb64=uid token=token %}
+{% endautoescape %}

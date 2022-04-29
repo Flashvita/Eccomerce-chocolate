@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% load thumbnail %}
+{% block title %}{{ category.title }}{% endblock title %}
+{% block content %}
+<div class="container marketing">
+    <div class="row">
+                        {% for product in products %}
+        <div class="col-lg-3">
+                    {% thumbnail product.image "225x175" as im %}
+                                            <a href="{{ product.image.url }}">
+                                                <img src="{{ im.url }}" class="image-detail">
+                                            </a>
+                    {% endthumbnail %}
+                                            <br>
+                    <p>Масса: {{ product.weight }}г.</p>
+                    <p>Производитель: {{ product.manufacturer }}</p>
+                    <p>Цена: {{ product.price }}p.</p>
+                    <a href="{% url 'product-detail' product.pk %}">{{ product.title }}</a>
+        </div>
+                        {% endfor %}
+
+    </div>
+</div>
+{% endblock content %}
