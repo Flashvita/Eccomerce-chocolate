@@ -20,7 +20,7 @@
     <title>{% block title %}Главная{% endblock title %}</title>
   </head>
   <body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
       <div class="container-fluid">
         <a class="navbar-brand" href="/">
          <img src="/media/logo/chocolate.webp" alt="" width="40" height="28">Mood
@@ -53,6 +53,30 @@
               <a class="nav-link" href="#">Контакты</a>
             </li>
           </ul>
+           <li class="nav-item dropdown">
+                <a class="nav-link drowdown-toggle text-center" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
+                   aria-expanded="false">
+
+               <i class="fa fa-bell fa-2x"></i>
+                <span class="badge bg-{% if notifications.count %}danger{% else %}secondary{% endif %}">
+                        {{ notifications.count }}
+                </span>
+                </a>
+              <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+
+                            {% if notifications %}
+                                {% for n in notifications %}
+                                    <li><span class="dropdown-item">{{ n.text|safe }}</span></li>
+                                {% endfor %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a href="{% url 'clear-notifications' %}"
+                                           class="drowpdown-item">Пометить все, как прочитанное</a></li>
+                            {% else %}
+                                <li><a class="dropdown-item" href="#">Нет новых уведомлений</a></li>
+                            {% endif %}
+                        </ul>
+
+            </li>
           <div class="cart">
             {% if not request.user.is_authenticated %}
             <a href="{% url 'registration' %}" class="btn btn-primary">Регистрация</a>
@@ -71,7 +95,6 @@
 
 <main>
 {% block content %}
-  {{ request.user.customer }}
   <div id="myCarousel" class="carousel slide" data-bs-ride="carousel">
     <div class="carousel-indicators">
       <button type="button" data-bs-target="#myCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
@@ -123,6 +146,8 @@
     </button>
   </div>
 
+<main>
+
 
   <!-- Marketing messaging and featurettes
   ================================================== -->
@@ -131,10 +156,6 @@
   <div class="container marketing">
     <!-- Three columns of text below the carousel -->
     <div class="row">
-      <div class="col-lg-3">
-
-
-      </div><!-- /.col-lg-3 -->
         {% for product in products %}
 
       <div class="col-lg-3">

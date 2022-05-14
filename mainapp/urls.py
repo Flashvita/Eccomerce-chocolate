@@ -14,6 +14,10 @@ from .views import (
     LogoutUserView,
     ProductRemoveFromCartView,
     OrderCreateView,
+    PaymentView,
+    PaymentDoneView,
+    PaymentCancelView,
+    ClearNotificationsView,
 )
 
 
@@ -36,5 +40,8 @@ urlpatterns = [
     path('catalog/<int:pk>/', CategoryView.as_view(), name='category-detail'),
     path('catalog/product-detail/<int:pk>/', ProductDetailView.as_view(), name='product-detail'),
     path('cart/new-order', OrderCreateView.as_view(), name='new-order'),
-
+    path('process/payment', PaymentView.as_view(), name='process'),
+    path('process/done', PaymentDoneView.as_view(), name='done'),
+    path('process/cancel', PaymentCancelView.as_view(), name='cancel'),
+    path('clear-notifications/', ClearNotificationsView.as_view(), name='clear-notifications'),
 ]

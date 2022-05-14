@@ -2,7 +2,8 @@ from datetime import timezone
 from datetime import datetime
 from django.db import models
 from django.contrib.auth import get_user_model
-
+from django.utils.safestring import mark_safe
+from django.db.models.signals import post_save, pre_save
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.urls import reverse
@@ -89,8 +90,7 @@ class Order(models.Model):
         (BUYING_TYPE_SELF, 'Самовывоз'),
         (BUYING_TYPE_DELIVERY, 'Доставка')
     )
-    first_name = models.CharField(max_length=255, verbose_name='Имя')
-    last_name = models.CharField(max_length=255, verbose_name='Фамилия')
+    customer = models.ForeignKey('Customer', verbose_name='Покупатель', related_name='orders', on_delete=models.CASCADE)
     city = models.CharField(max_length=100, verbose_name='Город')
     address = models.CharField(max_length=300, verbose_name='Адрес', null=True, blank=True)
     status = models.CharField(max_length=100, verbose_name='Статус заказа', choices=STATUS_CHOICES, default=STATUS_NEW)
@@ -98,6 +98,7 @@ class Order(models.Model):
     comment = models.TextField(verbose_name='Комментарий к заказу', null=True, blank=True)
     created_at = models.DateField(verbose_name='Дата создания заказа', auto_now=True)
     postal_code = models.CharField(max_length=50)
+    braintree_id = models.CharField(max_length=150, blank=True)
     paid = models.BooleanField(default=False)
 
     class Meta:
@@ -122,3 +123,49 @@ class OrderItem(models.Model):
 
     def get_cost(self):
         return self.price * self.quantity
+
+
+class NotificationManager(models.Manager):
+
+    def get_queryset(self):
+        return super().get_queryset()
+
+    def all(self, recipient):
+        return self.get_queryset().filter(
+            recipient=recipient,
+            read=False
+        )
+
+    def make_all_read(self, recipient):
+        qs = self.get_queryset().filter(recipient=recipient, read=False)
+        qs.update(read=True)
+
+
+class Notification(models.Model):
+    """Уведомления"""
+
+    recipient = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name='Получатель')
+    text = models.TextField()
+    read = models.BooleanField(default=False)
+    objects = NotificationManager()
+
+    def __str__(self):
+        return f"Уведомление для {self.recipient.user} | id={self.id}"
+
+    class Meta:
+        verbose_name = 'Уведомление'
+        verbose_name_plural = 'Уведомления'
+
+
+def send_notification(instance, **kwargs):
+    if instance.status:
+        order_customer = Order.objects.get(id=instance.id)
+        if order_customer:
+            Notification.objects.create(
+                recipient=order_customer.customer,
+                text=mark_safe(f'Вас заказ оформлен.Статус заказа {instance.status}'),
+            )
+
+post_save.connect(send_notification, sender=Order)
+
+

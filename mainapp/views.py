@@ -5,20 +5,24 @@ from django.shortcuts import get_object_or_404
 from django.http import HttpResponseRedirect
 from django.contrib.auth import authenticate, login
 from .cart import Cart
-from .models import Product, Category, Customer, Order, OrderItem
+from .models import Product, Category, Customer, Order, OrderItem, Notification
 from .forms import ProductAddToCartForm, RegistrationForm, LoginForm, OrderCreateForm
 from .utils import verify
 from django.contrib.auth.views import LogoutView
 from django.views.generic.list import ListView
+from .tasks import order_created, new_customer
+import braintree
+from .mixins import NotificationsMixin
 
 
-class BaseView(views.View):
+class BaseView(NotificationsMixin, views.View):
     def get(self, request, *args, **kwargs):
         categories = Category.objects.all()
         products = Product.objects.filter(available=True)
         context = {
             'products': products,
             'categories': categories,
+            'notifications': self.notifications(request.user)
         }
         return render(request, 'base.html', context)
 
@@ -111,7 +115,8 @@ class CustomerRegistrationView(views.View):
             )
             user = authenticate(username=form.cleaned_data['username'], password=form.cleaned_data['password'])
             login(request, user)
-            return HttpResponseRedirect('auth/verify-letter')
+            new_customer.delay(user.customer.id)
+            return HttpResponseRedirect('/')
         context = {
             'form': form
         }
@@ -165,8 +170,7 @@ class OrderCreateView(views.View):
         }
         if form.is_valid():
             order = form.save(commit=False)
-            order.first_name = form.cleaned_data['first_name']
-            order.last_name = form.cleaned_data['last_name']
+            order.customer = request.user.customer
             order.address = form.cleaned_data['address']
             order.city = form.cleaned_data['city']
             order.buying_type = form.cleaned_data['buying_type']
@@ -179,9 +183,59 @@ class OrderCreateView(views.View):
                     order=order, product=item['product'], price=item['price'], quantity=item['quantity']
                 )
             cart.clear()
-            return render(request, 'cart/order-complete.html', context)
+            order_created.delay(order.id)
+            request.session['order_id'] = order.id
+            return render(request, 'payment/process.html', context)
 
         return render(request, 'cart/new-order.html', context)
 
 
+class PaymentView(views.View):
+    def get(self, request, *args, **kwargs):
+        order_id = request.session.get('order_id')
+        order = get_object_or_404(Order, id=order_id)
+        client_token = braintree.ClientToken.generate()
+        return render(request,
+                      'payment/process.html',
+                      {'order': order,
+                       'client_token': client_token})
 
+    def post(self, request, *args, **kwargs):
+        order_id = request.session.get('order_id')
+        order = get_object_or_404(Order, id=order_id)
+        nonce = request.POST.get('payment_method_nonce', None)
+        # Создание и сохранение транзакции.
+        result = braintree.Transaction.sale({
+            'amount': '{:.2f}'.format(order.get_total_cost()),
+            'payment_method_nonce': nonce,
+            'options': {
+                'submit_for_settlement': True
+            }
+        })
+        if result.is_success:
+
+            # Отметка заказа как оплаченного.
+            order.paid = True
+            # Сохранение ID транзакции в заказе.
+            order.braintree_id = result.transaction.id
+            order.save()
+            return HttpResponseRedirect('/payment/done/')
+        else:
+            return HttpResponseRedirect('/payment/cancel/')
+
+
+class PaymentDoneView(views.View):
+    def get(self, request, *args, **kwargs):
+        return render(request, 'process/done.html', {})
+
+
+class PaymentCancelView(views.View):
+    def get(self, request, *args, **kwargs):
+        return render(request, 'process/cancel.html', {})
+
+class ClearNotificationsView(views.View):
+
+    @staticmethod
+    def get(request, *args, **kwargs):
+        Notification.objects.make_all_read(request.user.customer)
+        return HttpResponseRedirect(request.META['HTTP_REFERER'])
